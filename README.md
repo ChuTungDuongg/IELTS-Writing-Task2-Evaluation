@@ -1,39 +1,50 @@
 # ✍️ IELTS Writing Evals
 
-> 📚 Repository phục vụ **nghiên cứu và đánh giá điểm bài viết IELTS Writing** bằng các mô hình ngôn ngữ, bao gồm notebook cho EDA, feature engineering, baseline model và inference.
+> 📚 Repository phục vụ **nghiên cứu và đánh giá điểm bài viết IELTS Writing** bằng các mô hình ngôn ngữ. Dự án tập trung theo workflow notebook: EDA → feature engineering → baseline training → inference.
 
 ## 🎯 Mục tiêu
 
-- 🔍 Khám phá dữ liệu chấm điểm IELTS Writing.
+- 🔍 Khám phá dữ liệu chấm điểm IELTS Writing theo từng tiêu chí.
 - 🧠 Xây dựng pipeline huấn luyện và đánh giá các mô hình NLP.
-- ⚖️ So sánh nhiều mô hình baseline và biến thể fine-tuning.
-- 🚀 Thử nghiệm thêm với các mô hình Qwen trong thư mục `further_test/`.
+- ⚖️ So sánh nhiều mô hình baseline và các biến thể fine-tuning.
+- 🚀 Thử nghiệm mở rộng với Qwen trong thư mục `further_test/`.
 
-## 🗂️ Cấu trúc thư mục
+## 🗂️ Cấu trúc repository
 
+### Notebook chính
 - 📊 `eda.ipynb`: Phân tích khám phá dữ liệu (Exploratory Data Analysis).
-- 🛠️ `feature engineering.ipynb`: Xử lý và tạo đặc trưng cho dữ liệu.
-- 🔮 `inference/Inference.ipynb`: Notebook chạy suy luận (inference).
-- 🧪 `baseline/`: Các notebook baseline với nhiều kiến trúc khác nhau:
-  - `distil_roberta_base_score.ipynb`
-  - `roberta_base_score.ipynb`
-  - `roberta_large_score.ipynb`
-  - `modern_bert_large_score.ipynb`
-- 🧬 `further_test/`: Thử nghiệm bổ sung với Qwen 3B:
-  - `qwen_3b_3epochs.ipynb`
-  - `qwen_3b_10epochs.ipynb`
-  - `qwen_3b_13epochs.ipynb`
-- 🗃️ Các file dữ liệu:
-  - `ielts_train_df.csv`
-  - `ielts_val_df.csv`
-  - `ielts_test_df.csv`
-- 📄 `reference.pdf`: Tài liệu tham khảo.
+- 🛠️ `feature engineering.ipynb`: Tạo và xử lý đặc trưng.
+
+### Baseline (`baseline/`)
+- `distil_roberta_base_score.ipynb`
+- `roberta_base_score.ipynb`
+- `roberta_large_score.ipynb`
+- `modern_bert_large_score.ipynb`
+
+### Inference (`inference/`)
+- `Inference.ipynb`: Luồng suy luận tổng quát.
+- `Inference_grammar_feature.ipynb`: Inference có kết hợp grammar features.
+- `B1_inference.ipynb`, `B2_inference.ipynb`: Inference theo từng biến thể mô hình.
+
+### Thử nghiệm nâng cao (`further_test/`)
+- `qwen_3b_3epochs.ipynb`
+- `qwen_3b_10epochs.ipynb`
+- `qwen_3b_10epochs_grammar.ipynb`
+- `qwen_3b_10epochs_grammar_FIX_B1.ipynb`
+- `qwen_3b_10epochs_grammar_FIX_B2.ipynb`
+- `qwen_3b_10epochs_grammar_FIX_B3.ipynb`
+
+### Dữ liệu & tài liệu
+- 🗃️ `ielts_train_df.csv`
+- 🗃️ `ielts_val_df.csv`
+- 🗃️ `ielts_test_df.csv`
+- 📄 `reference.pdf`
 
 ## ⚡ Hướng dẫn sử dụng nhanh
 
-### 1️⃣ Chuẩn bị môi trường
+### 1) Chuẩn bị môi trường
 
-✅ Khuyến nghị dùng Python 3.10+ và Jupyter Notebook/Lab.
+Khuyến nghị Python **3.10+** và Jupyter Notebook/Lab.
 
 ```bash
 python -m venv .venv
@@ -42,48 +53,51 @@ pip install -U pip
 pip install jupyter pandas numpy scikit-learn matplotlib seaborn transformers datasets torch
 ```
 
-> 💡 Tuỳ từng notebook, bạn có thể cần cài thêm thư viện khác.
+> 💡 Mỗi notebook có thể cần thêm thư viện riêng. Nếu gặp lỗi import, cài thêm theo cell đầu notebook tương ứng.
 
-### 2️⃣ Mở notebook
+### 2) Chạy notebook
 
 ```bash
 jupyter notebook
 ```
 
-Sau đó chạy lần lượt các notebook theo mục tiêu:
-- 🔍 Khám phá dữ liệu: `eda.ipynb`
-- 🛠️ Tạo đặc trưng: `feature engineering.ipynb`
-- 🧪 Huấn luyện/đánh giá baseline: thư mục `baseline/`
-- 🔮 Suy luận: `inference/Inference.ipynb`
+Thứ tự khuyến nghị:
+1. `eda.ipynb`
+2. `feature engineering.ipynb`
+3. Notebook trong `baseline/`
+4. Notebook trong `further_test/` (nếu cần thử nghiệm thêm)
+5. Notebook trong `inference/`
 
-### 3️⃣ Dữ liệu
+### 3) Dữ liệu
 
-📌 Repository đã có sẵn các file CSV train/val/test. Nếu bạn thay đổi dữ liệu đầu vào, hãy cập nhật đường dẫn trong notebook tương ứng.
+Repository đã chứa sẵn file train/val/test. Nếu thay dataset:
+- giữ nguyên schema cột mà notebook đang dùng,
+- cập nhật đường dẫn file trong các cell đọc dữ liệu.
 
-## 🧭 Gợi ý quy trình làm việc
+## 🧭 Gợi ý workflow tái lập kết quả
 
-1. 🔎 Chạy `eda.ipynb` để hiểu phân phối điểm và chất lượng dữ liệu.
-2. 🧱 Chạy `feature engineering.ipynb` để chuẩn bị input.
-3. 🧪 Chạy các notebook trong `baseline/` để lấy mốc so sánh.
-4. 🚀 Chạy thử nghiệm nâng cao trong `further_test/` nếu cần.
-5. 🔮 Dùng `inference/Inference.ipynb` để kiểm tra mô hình trên dữ liệu mới.
+1. Chạy EDA để kiểm tra phân phối điểm và outlier.
+2. Chốt tập đặc trưng ở `feature engineering.ipynb`.
+3. Huấn luyện các baseline để lấy mốc.
+4. Chạy các notebook Qwen để so sánh cải thiện.
+5. Chạy inference trên tập test/ngoài tập để kiểm tra độ ổn định.
 
 ## 🤝 Đóng góp
 
-Bạn có thể đóng góp bằng cách:
-- ➕ Bổ sung notebook baseline mới.
-- ⚙️ Tối ưu pipeline huấn luyện.
-- 📈 Cải thiện phần đánh giá/chấm điểm.
-- 📝 Cập nhật README và tài liệu sử dụng.
+Hoan nghênh đóng góp dưới các dạng:
+- ➕ Thêm baseline notebook mới.
+- ⚙️ Tối ưu pipeline huấn luyện/inference.
+- 📈 Bổ sung metric đánh giá.
+- 📝 Cập nhật tài liệu, README, hướng dẫn tái lập.
 
 ## 🧷 Lưu ý
 
-- ⚠️ Đây là repository thiên về notebook, nên việc tái lập kết quả có thể phụ thuộc môi trường chạy.
-- 📦 Nên cố định phiên bản thư viện (`requirements.txt`) nếu muốn reproducible tốt hơn.
+- ⚠️ Dự án thiên về notebook nên kết quả có thể phụ thuộc môi trường chạy.
+- 📦 Nên thêm `requirements.txt` hoặc `environment.yml` để tăng khả năng reproducible.
 
 ---
 
-🌟 Nếu bạn muốn, mình có thể tiếp tục tạo thêm:
+Nếu bạn muốn, mình có thể tiếp tục hỗ trợ tạo sẵn:
 - `requirements.txt` tối thiểu cho toàn bộ notebook,
-- mẫu cấu trúc `src/` để chuyển dần từ notebook sang code production,
-- hoặc README tiếng Anh song song với bản tiếng Việt này.
+- checklist tái lập kết quả,
+- README song ngữ Việt/Anh.
