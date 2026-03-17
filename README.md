@@ -1,6 +1,6 @@
 # ✍️ IELTS Writing Evals
 
-> 📚 Repository phục vụ **nghiên cứu và đánh giá điểm bài viết IELTS Writing** bằng các mô hình ngôn ngữ. Dự án tập trung theo workflow notebook: EDA → feature engineering → baseline training → inference.
+> 📚 Repository phục vụ **nghiên cứu và đánh giá điểm bài viết IELTS Writing** bằng các mô hình ngôn ngữ. Dự án tập trung theo workflow notebook: EDA → feature engineering → baseline training → further training → inference.
 
 ## 🎯 Mục tiêu
 
@@ -33,7 +33,7 @@
 - `qwen_3b_10epochs_grammar_FIX_B1.ipynb`: Biến thể tối ưu cho B1, vẫn là **multi-task regression + grammar features**, cân bằng lại criterion weights và xuất model nhẹ phục vụ inference.
 - `qwen_3b_10epochs_grammar_FIX_B2.ipynb`: Biến thể B2 theo cùng phương pháp với B1 (multi-task + grammar features), điều chỉnh hyperparameter (ví dụ grad accumulation) cho ổn định hơn ở band mục tiêu B2.
 - `qwen_3b_10epochs_grammar_FIX_B3.ipynb`: Biến thể B3 bổ sung **sample re-weighting theo band** (band-value weights) ngoài criterion weights, để giảm lệch phân phối điểm trong train.
-- `qwen_3b_10epochs_grammar_FIX_B4.ipynb`: Biến thể B4 chuyển sang **ordinal regression** cho mỗi tiêu chí (mã hóa ngưỡng band và dùng BCEWithLogitsLoss trên các threshold), vẫn kết hợp grammar features.
+- `qwen_3b_10epochs_grammar_FIX_B4.ipynb`: Biến thể B4 chuyển sang **ordinal regression** cho mỗi tiêu chí (mã hóa ngưỡng band và dùng BCEWithLogitsLoss trên các threshold), vẫn kết hợp các linguistic features cho cả 4 tiêu chí TR/TA CC LR GRA.
 
 ### Dữ liệu & tài liệu
 - 🗃️ `ielts_train_df.csv`
