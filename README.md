@@ -27,12 +27,13 @@
 - `B1_inference.ipynb`, `B2_inference.ipynb`: Inference theo từng biến thể mô hình.
 
 ### Thử nghiệm nâng cao (`further_test/`)
-- `qwen_3b_3epochs.ipynb`
-- `qwen_3b_10epochs.ipynb`
-- `qwen_3b_10epochs_grammar.ipynb`
-- `qwen_3b_10epochs_grammar_FIX_B1.ipynb`
-- `qwen_3b_10epochs_grammar_FIX_B2.ipynb`
-- `qwen_3b_10epochs_grammar_FIX_B3.ipynb`
+- `qwen_3b_3epochs.ipynb`: Pipeline baseline Qwen2.5-3B dạng **multi-output regression** (4 tiêu chí), fine-tune bằng **LoRA + HuggingFace Trainer**, chưa dùng grammar features.
+- `qwen_3b_10epochs.ipynb`: Bản mở rộng từ baseline với huấn luyện lâu hơn và custom **WeightedLossTrainer** để gán trọng số loss theo từng tiêu chí (vẫn là regression 4 đầu ra).
+- `qwen_3b_10epochs_grammar.ipynb`: Pipeline **multi-task** kết hợp embedding từ Qwen + **grammar feature engineering** thủ công; dùng nhánh chính dự đoán 4 tiêu chí và thêm thành phần loss bias/grammar để regularize.
+- `qwen_3b_10epochs_grammar_FIX_B1.ipynb`: Biến thể tối ưu cho B1, vẫn là **multi-task regression + grammar features**, cân bằng lại criterion weights và xuất model nhẹ phục vụ inference.
+- `qwen_3b_10epochs_grammar_FIX_B2.ipynb`: Biến thể B2 theo cùng phương pháp với B1 (multi-task + grammar features), điều chỉnh hyperparameter (ví dụ grad accumulation) cho ổn định hơn ở band mục tiêu B2.
+- `qwen_3b_10epochs_grammar_FIX_B3.ipynb`: Biến thể B3 bổ sung **sample re-weighting theo band** (band-value weights) ngoài criterion weights, để giảm lệch phân phối điểm trong train.
+- `qwen_3b_10epochs_grammar_FIX_B4.ipynb`: Biến thể B4 chuyển sang **ordinal regression** cho mỗi tiêu chí (mã hóa ngưỡng band và dùng BCEWithLogitsLoss trên các threshold), vẫn kết hợp grammar features.
 
 ### Dữ liệu & tài liệu
 - 🗃️ `ielts_train_df.csv`
