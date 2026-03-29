@@ -1,422 +1,141 @@
-# ✍️ IELTS Writing Evals
+# ✍️ IELTS-Writing-Evals
 
-> 📚 Repository phục vụ **nghiên cứu và đánh giá điểm bài viết IELTS Writing** bằng các mô hình ngôn ngữ. Dự án đi theo workflow notebook: **EDA → feature engineering → baseline training → further experiments → inference**.
-
-## 🎯 Mục tiêu
-
-- 🔍 Khám phá dữ liệu chấm điểm IELTS Writing theo từng tiêu chí.
-- 🧠 Xây dựng pipeline huấn luyện và đánh giá các mô hình NLP/LLM cho bài toán chấm điểm.
-- ⚖️ So sánh nhiều mô hình baseline với các biến thể fine-tuning nâng cao.
-- 🚀 Thử nghiệm thêm với họ mô hình **Qwen 2.5-3B** trong thư mục `further_test/`.
-
-## 🗂️ Cấu trúc repository
-
-### Notebook chính
-- 📊 `eda.ipynb`: Phân tích khám phá dữ liệu (phân phối điểm, chất lượng dữ liệu, outlier, đặc điểm prompt/bài viết).
-- 🛠️ `feature engineering.ipynb`: Tạo các đặc trưng thủ công phục vụ mô hình hoặc so sánh với embedding-based approach.
-
-### Baseline (`baseline/`)
-- `distil_roberta_base_score.ipynb`: Baseline gọn nhẹ để có mốc nhanh.
-- `roberta_base_score.ipynb`: Baseline RoBERTa tiêu chuẩn cho bài toán scoring.
-- `roberta_large_score.ipynb`: Bản RoBERTa lớn hơn để kiểm tra trade-off giữa chất lượng và chi phí.
-- `modern_bert_large_score.ipynb`: Baseline với backbone ModernBERT Large.
-
-### Inference (`inference/`)
-- `Inference.ipynb`: Luồng suy luận tổng quát.
-- `Inference_grammar_feature.ipynb`: Inference cho mô hình có dùng grammar features.
-- `B1_inference.ipynb`, `B2_inference.ipynb`, `B7_inference.ipynb`: Inference cho các biến thể checkpoint cụ thể.
-
-## 🔬 Giải thích chi tiết thư mục `further_test/`
-
-Thư mục này chứa các notebook thử nghiệm nâng cao quanh backbone **`Qwen/Qwen2.5-3B-Instruct`**, chủ yếu dùng **LoRA/PEFT**, token hóa essay + prompt thành một input hợp nhất, rồi dự đoán **4 tiêu chí IELTS Writing**. Có thể hiểu các notebook như một chuỗi tiến hóa: từ baseline regression thuần văn bản, sang kết hợp grammar features, rồi tiến thêm tới reweighting, feature theo từng tiêu chí, và ordinal regression.
-
-### 1) `qwen_3b_3epochs.ipynb`
-**Vai trò:** baseline Qwen tối giản để lấy mốc ban đầu.
-
-**Phương pháp / hướng tiếp cận:**
-- Dùng `Qwen2.5-3B-Instruct` làm backbone.
-- Chuyển bài toán thành **multi-output regression** với 4 đầu ra tương ứng 4 tiêu chí chấm điểm.
-- Input được ghép theo dạng:
-  - `[PROMPT] ...`
-  - `[ESSAY] ...`
-- Fine-tune bằng **LoRA** để giảm chi phí huấn luyện.
-- Dùng `Trainer` chuẩn của Hugging Face, chưa thêm cơ chế weighting đặc biệt.
-- Huấn luyện **3 epochs**, phù hợp để kiểm tra nhanh pipeline có chạy ổn định không.
-
-**Khi nào nên dùng notebook này:**
-- Khi muốn có baseline đơn giản, dễ tái lập.
-- Khi cần xác minh dữ liệu, tokenizer, loss, metric đang hoạt động đúng trước khi thử nghiệm phức tạp hơn.
-
-### 2) `qwen_3b_10epochs.ipynb`
-**Vai trò:** mở rộng baseline bằng huấn luyện lâu hơn và tinh chỉnh loss.
-
-**Phương pháp / hướng tiếp cận:**
-- Vẫn là **multi-output regression** trên 4 tiêu chí.
-- Tăng số vòng huấn luyện lên **10 epochs** để khai thác kỹ hơn backbone Qwen.
-- Dùng `WeightedLossTrainer` để áp **loss weight theo từng tiêu chí**, thay vì coi mọi criterion quan trọng như nhau.
-- Vẫn không dùng grammar features thủ công; mô hình chủ yếu học từ biểu diễn ngữ cảnh của prompt + essay.
-
-**Ý tưởng cốt lõi:**
-- Nếu một số tiêu chí khó học hơn hoặc quan trọng hơn, có thể tăng trọng số loss tương ứng.
-- Đây là bước chuyển từ “baseline thuần” sang “baseline có điều khiển ưu tiên tối ưu”.
-
-### 3) `qwen_3b_10epochs_grammar.ipynb`
-**Vai trò:** thêm tri thức thủ công về ngữ pháp vào mô hình.
-
-**Phương pháp / hướng tiếp cận:**
-- Trích xuất **grammar features** từ essay như độ dài câu, mật độ từ, tín hiệu cấu trúc câu hoặc các chỉ báo gần với chất lượng ngữ pháp.
-- Xây dựng mô hình **multi-task / hybrid**:
-  - Một nhánh dùng embedding từ Qwen.
-  - Một nhánh dùng `gra_features` thủ công.
-- Trainer tùy chỉnh (`IELTSMultiTaskTrainer`) kết hợp nhiều thành phần loss.
-- Có thêm thành phần **bias/auxiliary loss** để regularize quá trình học.
-
-**Ý tưởng cốt lõi:**
-- Điểm IELTS Writing không chỉ phụ thuộc vào ngữ nghĩa tổng thể, mà còn bị ảnh hưởng bởi tín hiệu ngôn ngữ học bề mặt.
-- Kết hợp LLM embedding với feature engineering giúp mô hình “nhìn” rõ hơn các dấu hiệu grammar quality.
-
-### 4) `qwen_3b_10epochs_grammar_FIX_B1.ipynb`
-**Vai trò:** bản tinh chỉnh của notebook grammar, ưu tiên tính ổn định và khả năng suy luận cho biến thể B1.
-
-**Phương pháp / hướng tiếp cận:**
-- Kế thừa kiến trúc **Qwen + grammar features + multi-task regression**.
-- Duy trì trainer tùy chỉnh và cơ chế phối hợp nhiều loss thành phần.
-- Tối ưu lại hyperparameter/weight để checkpoint cho nhánh B1 chạy ổn định hơn.
-- Hướng tới xuất bản model “gọn” hơn phục vụ inference sau huấn luyện.
-
-**Cách hiểu notebook này:**
-- Không phải đổi triết lý mô hình hoàn toàn.
-- Chủ yếu là một bản “fix” mang tính thực nghiệm để ổn định kết quả cho một biến thể checkpoint cụ thể.
-
-### 5) `qwen_3b_10epochs_grammar_FIX_B2.ipynb`
-**Vai trò:** biến thể B2 của cùng họ mô hình grammar-aware.
-
-**Phương pháp / hướng tiếp cận:**
-- Giữ nguyên hướng **hybrid text + grammar features**.
-- Tiếp tục dùng **multi-output regression** thay vì ordinal formulation.
-- Điều chỉnh thông số huấn luyện như batch/gradient accumulation/cân bằng loss để phù hợp hơn với checkpoint B2.
-
-**Ý nghĩa thực nghiệm:**
-- Notebook này phục vụ so sánh xem cùng một họ kiến trúc, việc đổi cấu hình huấn luyện có cải thiện độ ổn định hoặc độ chính xác hay không.
-
-### 6) `qwen_3b_10epochs_grammar_FIX_B3.ipynb`
-**Vai trò:** xử lý thêm vấn đề mất cân bằng phân phối band điểm.
-
-**Phương pháp / hướng tiếp cận:**
-- Vẫn là **Qwen + grammar features + multi-task regression**.
-- Bổ sung hàm `build_band_value_weights(...)` để tạo **trọng số theo từng mức band score**.
-- Sinh `sample_weights` cho từng mẫu huấn luyện, dựa trên band của từng tiêu chí.
-- Mục tiêu là **sample re-weighting**: các mức band ít gặp sẽ được tăng ảnh hưởng trong loss.
-
-**Ý tưởng cốt lõi:**
-- Nếu dữ liệu IELTS bị lệch về vài mức điểm phổ biến, mô hình regression thường học thiên về vùng đó.
-- Re-weighting giúp giảm bias phân phối và hỗ trợ mô hình học tốt hơn ở các band hiếm.
-
-### 7) `qwen_3b_10epochs_grammar_FIX_B4.ipynb`
-**Vai trò:** đổi bài toán từ regression sang **ordinal regression**.
-
-**Phương pháp / hướng tiếp cận:**
-- Thay vì dự đoán trực tiếp band score liên tục, notebook này mã hóa điểm thành **các ngưỡng thứ bậc (ordinal thresholds)**.
-- Dùng một kiến trúc như `QwenForIELTSMultiTaskOrdinal`.
-- Loss được xây dựng theo kiểu **BCE / threshold-based ordinal loss** trên từng tiêu chí.
-- Kết hợp thêm feature theo tiêu chí:
-  - `tr_features`
-  - `cc_features`
-  - `lr_features`
-  - `gra_features`
-- Tức là mô hình không chỉ có grammar features, mà đã đi tới hướng **criterion-specific handcrafted features** cho cả 4 tiêu chí.
-
-**Ý tưởng cốt lõi:**
-- IELTS band score có bản chất **thứ bậc**, không hoàn toàn là giá trị liên tục tự do.
-- Ordinal regression thường phù hợp hơn regression thuần khi nhãn có cấu trúc thứ tự rõ ràng.
-
-### 8) `qwen_3b_10epochs_grammar_FIX_B5.ipynb`
-**Vai trò:** tiếp tục nhánh ordinal regression, nhưng đổi cấu hình huấn luyện để thực nghiệm hiệu quả batch tốt hơn.
-
-**Phương pháp / hướng tiếp cận:**
-- Cùng họ kiến trúc với B4: **ordinal regression + feature theo từng tiêu chí**.
-- Dùng batch size/gradient accumulation khác (`BATCH_SIZE = 2` trong cấu hình notebook) để kiểm tra trade-off giữa ổn định gradient và tài nguyên.
-- Giữ định hướng hybrid giữa biểu diễn Qwen và feature thủ công.
-
-**Ý nghĩa thực nghiệm:**
-- Đây là bản tinh chỉnh cấu hình, giúp so sánh xem thay đổi scheduling/batch có cải thiện được hiệu năng hay độ mượt của quá trình train không.
-
-### 9) `qwen_3b_10epochs_grammar_FIX_B7.ipynb`
-**Vai trò:** mở rộng feature engineering mạnh hơn và thay prompt huấn luyện theo hướng sát tác vụ chấm IELTS hơn.
-
-**Phương pháp / hướng tiếp cận:**
-- Tạo tập feature đầy đủ cho 4 tiêu chí:
-  - **TR**: mức bám đề, độ phủ từ khóa, tương đồng prompt-essay.
-  - **CC**: tín hiệu liên kết/coherence.
-  - **LR**: lexical richness / diversity.
-  - **GRA**: grammar complexity / correctness.
-- Hàm `build_input_text(...)` đưa vào chỉ dẫn kiểu giám khảo IELTS, tức là prompt hóa tác vụ rõ hơn cho Qwen.
-- Tăng `MAX_LENGTH` lên **2048**, phù hợp hơn với essay dài.
-- Giữ hướng **multi-task hybrid model** giữa LLM embedding và feature thủ công nhiều nhóm.
-
-**Ý tưởng cốt lõi:**
-- Không chỉ bổ sung feature, mà còn điều chỉnh cách “đặt bài toán” cho mô hình thông qua instruction-style prompt.
-- Đây là hướng tiếp cận gần với **instruction-aware essay scoring** hơn so với các notebook trước.
-
-### 10) `qwen_3b_10epochs_grammar_FIX_B8.ipynb`
-**Vai trò:** một bản tối ưu thực dụng hơn của B7 cho throughput huấn luyện.
-
-**Phương pháp / hướng tiếp cận:**
-- Vẫn dùng bộ feature đầy đủ theo từng criterion như B7.
-- Prompt đầu vào được viết rõ theo vai trò **IELTS Writing Task 2 examiner**.
-- `MAX_LENGTH = 1536`, `BATCH_SIZE = 8` trong cấu hình notebook, cho thấy định hướng cân bằng giữa độ dài ngữ cảnh và tốc độ train.
-- Tiếp tục huấn luyện theo hướng hybrid giữa backbone Qwen và feature engineered.
-
-**Khi nào nên dùng notebook này:**
-- Khi muốn một cấu hình thực nghiệm thực dụng hơn B7.
-- Khi cần thử nghiệm tốc độ/throughput tốt hơn mà vẫn giữ nhóm feature đầy đủ.
-
-## 🧠 Tóm tắt nhanh các hướng tiếp cận trong `further_test/`
-
-- **Hướng 1 – Text-only regression:**
-  - `qwen_3b_3epochs.ipynb`
-  - `qwen_3b_10epochs.ipynb`
-- **Hướng 2 – Hybrid regression (Qwen + grammar features):**
-  - `qwen_3b_10epochs_grammar.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B1.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B2.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B3.ipynb`
-- **Hướng 3 – Hybrid ordinal / criterion-specific features:**
-  - `qwen_3b_10epochs_grammar_FIX_B4.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B5.ipynb`
-- **Hướng 4 – Full feature + instruction-aware setup:**
-  - `qwen_3b_10epochs_grammar_FIX_B7.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B8.ipynb`
-
-## ⚡ Hướng dẫn sử dụng nhanh
-
-### 1) Chuẩn bị môi trường
-
-Khuyến nghị Python **3.10+** và Jupyter Notebook/Lab.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-pip install jupyter pandas numpy scikit-learn matplotlib seaborn transformers datasets torch peft accelerate
-```
-
-> 💡 Mỗi notebook có thể cần thêm thư viện riêng. Nếu gặp lỗi import, cài thêm theo cell đầu notebook tương ứng.
-
-### 2) Chạy notebook
-
-```bash
-jupyter notebook
-```
-
-Thứ tự khuyến nghị:
-1. `eda.ipynb`
-2. `feature engineering.ipynb`
-3. Notebook trong `baseline/`
-4. Notebook trong `further_test/`
-5. Notebook trong `inference/`
-
-### 3) Dữ liệu
-
-Repository đã chứa sẵn file train/val/test. Nếu thay dataset:
-- giữ nguyên schema cột mà notebook đang dùng,
-- cập nhật đường dẫn file trong các cell đọc dữ liệu,
-- kiểm tra lại các cột label và các feature thủ công trước khi chạy notebook trong `further_test/`.
-
-## 🧭 Gợi ý workflow tái lập kết quả
-
-1. Chạy EDA để kiểm tra phân phối điểm và outlier.
-2. Chốt tập đặc trưng ở `feature engineering.ipynb`.
-3. Huấn luyện baseline để lấy mốc so sánh.
-4. Chạy dần các notebook Qwen từ đơn giản đến phức tạp.
-5. Dùng notebook inference tương ứng với checkpoint đã chọn để đánh giá ngoài tập train/val.
-
-## 🧷 Lưu ý
-
-- ⚠️ Dự án thiên về notebook nên kết quả có thể phụ thuộc môi trường chạy.
-- ⚠️ Nhiều notebook được viết theo ngữ cảnh Google Colab (`/content/...`, `drive.mount(...)`), nên khi chạy local cần sửa đường dẫn.
-- 📦 Nên bổ sung `requirements.txt` hoặc `environment.yml` nếu muốn tái lập dễ hơn.
+Repository này phục vụ nghiên cứu bài toán **chấm điểm IELTS Writing Task 2** bằng nhiều hướng tiếp cận:
+- Baseline encoder models (RoBERTa/ModernBERT/DistilRoBERTa).
+- Fine-tune LLM (Qwen, Mistral) cho multi-output scoring.
+- Inference notebook để thử nghiệm checkpoint đã train.
 
 ---
 
-# English below
+## 1) Mục tiêu dự án
 
-# ✍️ IELTS Writing Evals
+- Phân tích dữ liệu essay IELTS và phân phối điểm theo từng tiêu chí.
+- Xây dựng các pipeline huấn luyện để dự đoán điểm các tiêu chí Writing.
+- So sánh nhiều kiến trúc/mức tài nguyên khác nhau (baseline nhỏ → mô hình lớn).
+- Giữ toàn bộ workflow dạng notebook để dễ tái lập thí nghiệm.
 
-> 📚 This repository is for **research and evaluation of IELTS Writing essays** using NLP models and LLM-based scoring pipelines. The project follows a notebook-oriented workflow: **EDA → feature engineering → baseline training → further experiments → inference**.
+---
 
-## 🎯 Project goals
+## 2) Cấu trúc thư mục & giải thích chi tiết từng file
 
-- 🔍 Explore the IELTS Writing scoring dataset at criterion level.
-- 🧠 Build training and evaluation pipelines for essay-scoring models.
-- ⚖️ Compare baseline transformer models with more advanced fine-tuning setups.
-- 🚀 Run extended experiments with **Qwen 2.5-3B** under `further_test/`.
+> Bạn có thể xem repo theo luồng: **dữ liệu → khám phá/feature → training → inference**.
 
-## 🗂️ Repository structure
+### 2.1. Thư mục gốc
 
-### Main notebooks
-- 📊 `eda.ipynb`: Exploratory data analysis.
-- 🛠️ `feature engineering.ipynb`: Manual feature creation and preprocessing.
+#### `README.md`
+- Tài liệu mô tả tổng quan dự án, cấu trúc thư mục, vai trò từng notebook.
 
-### Baseline (`baseline/`)
-- `distil_roberta_base_score.ipynb`: Lightweight baseline.
-- `roberta_base_score.ipynb`: Standard RoBERTa baseline.
-- `roberta_large_score.ipynb`: Larger RoBERTa variant.
-- `modern_bert_large_score.ipynb`: ModernBERT Large baseline.
+#### `reference.pdf`
+- Tài liệu tham chiếu (đề bài/ghi chú/nguồn tham khảo nội bộ của dự án).
+- Dùng làm ngữ cảnh khi đọc/đối chiếu kết quả trong notebook.
 
-### Inference (`inference/`)
-- `Inference.ipynb`: General inference flow.
-- `Inference_grammar_feature.ipynb`: Inference for grammar-feature-aware models.
-- `B1_inference.ipynb`, `B2_inference.ipynb`, `B7_inference.ipynb`: Inference notebooks for specific checkpoints.
+#### `eda.ipynb`
+- Notebook phân tích khám phá dữ liệu (EDA).
+- Thường bao gồm:
+  - Kiểm tra kích thước tập dữ liệu.
+  - Phân phối điểm theo tiêu chí.
+  - Kiểm tra thiếu dữ liệu / bất thường.
+  - Quan sát độ dài bài viết và các đặc tính bề mặt.
 
-## 🔬 Detailed explanation of `further_test/`
+#### `feature engineering.ipynb`
+- Notebook xây dựng đặc trưng thủ công cho essay.
+- Mục đích:
+  - Trích xuất feature ngôn ngữ học bổ sung cho mô hình.
+  - So sánh hiệu quả giữa biểu diễn thuần transformer và hướng hybrid (embedding + handcrafted features).
 
-This folder contains advanced experiments built around **`Qwen/Qwen2.5-3B-Instruct`**. Most notebooks use **LoRA/PEFT**, merge the prompt and essay into one textual input, and predict the **four IELTS Writing criteria**. The notebooks can be read as an evolution path: from plain text regression, to hybrid text + handcrafted features, and then to band-aware reweighting, criterion-specific features, and ordinal regression.
+#### `ielts_train_df.csv`
+- Tập huấn luyện chính.
+- Chứa essay/prompt/nhãn điểm dùng để train model.
 
-### 1) `qwen_3b_3epochs.ipynb`
-**Role:** the simplest Qwen baseline.
+#### `ielts_val_df.csv`
+- Tập validation.
+- Dùng chọn checkpoint, tinh chỉnh siêu tham số, theo dõi overfitting.
 
-**Method / approach:**
-- Uses `Qwen2.5-3B-Instruct` as the backbone.
-- Frames the task as **multi-output regression** with four outputs.
-- Builds a single input from prompt + essay.
-- Fine-tunes with **LoRA** for efficiency.
-- Uses the standard Hugging Face `Trainer`.
-- Trains for **3 epochs** as a quick sanity-check baseline.
+#### `ielts_test_df.csv`
+- Tập test.
+- Dùng đánh giá cuối cùng và kiểm tra khả năng tổng quát hóa.
 
-**Best use case:**
-- Establishing a clean starting point.
-- Verifying that data loading, tokenization, metrics, and training all work before trying more complex variants.
+---
 
-### 2) `qwen_3b_10epochs.ipynb`
-**Role:** longer training with criterion-aware loss weighting.
+### 2.2. `baseline/` – Các mô hình baseline
 
-**Method / approach:**
-- Still a **4-output regression** model.
-- Extends training to **10 epochs**.
-- Introduces a custom `WeightedLossTrainer` so different scoring criteria can contribute different loss weights.
-- Still text-only, without handcrafted grammar features.
+#### `baseline/distil_roberta_base_score.ipynb`
+- Baseline nhẹ, huấn luyện nhanh.
+- Phù hợp lấy mốc ban đầu, kiểm tra pipeline end-to-end trước khi chạy mô hình lớn.
 
-**Core idea:**
-- Some criteria may be harder to learn or more important to optimize, so per-criterion loss weighting may improve training behavior.
+#### `baseline/roberta_base_score.ipynb`
+- Baseline chuẩn với RoBERTa base.
+- Cân bằng tốt giữa chất lượng và chi phí huấn luyện.
 
-### 3) `qwen_3b_10epochs_grammar.ipynb`
-**Role:** first hybrid model that injects handcrafted grammar signals.
+#### `baseline/roberta_large_score.ipynb`
+- Phiên bản RoBERTa large.
+- Dùng để kiểm tra liệu tăng kích thước backbone có cải thiện điểm đáng kể hay không.
 
-**Method / approach:**
-- Extracts **grammar-related features** from the essay.
-- Uses a **hybrid / multi-task setup**:
-  - one branch from Qwen text embeddings,
-  - one branch from `gra_features`.
-- Uses a custom `IELTSMultiTaskTrainer` with multiple loss components.
-- Adds a bias/auxiliary loss term for regularization.
+#### `baseline/modern_bert_large_score.ipynb`
+- Baseline với ModernBERT large.
+- Mục tiêu so sánh kiến trúc encoder mới hơn với họ RoBERTa truyền thống.
 
-**Core idea:**
-- Essay quality is not only semantic; surface linguistic indicators also matter, especially for grammar-related scoring.
+---
 
-### 4) `qwen_3b_10epochs_grammar_FIX_B1.ipynb`
-**Role:** a stabilized grammar-aware variant for the B1 checkpoint line.
+### 2.3. `score_training/` – Thí nghiệm fine-tune LLM
 
-**Method / approach:**
-- Keeps the **Qwen + grammar features + multi-task regression** design.
-- Retains the custom trainer and multi-loss setup.
-- Adjusts training weights/hyperparameters for a more stable B1-oriented checkpoint.
-- Appears designed to support lighter downstream inference packaging.
+Nhóm notebook này tập trung vào train các mô hình lớn (Qwen/Mistral), chủ yếu theo hướng multi-criterion scoring.
 
-### 5) `qwen_3b_10epochs_grammar_FIX_B2.ipynb`
-**Role:** B2 variant of the grammar-aware family.
+#### `score_training/Mistral_7B_3epochs_ordinal_regress_1.ipynb`
+- Thử nghiệm Mistral 7B theo hướng ordinal regression.
+- Nhắm tới đặc tính thứ bậc của band điểm IELTS.
 
-**Method / approach:**
-- Keeps the **hybrid text + grammar feature** formulation.
-- Remains in **multi-output regression**, not ordinal modeling.
-- Tweaks optimization settings such as batch/gradient accumulation/loss balance for this experiment line.
+#### `score_training/qwen_3b_10epochs_test_1.ipynb`
+- Thử nghiệm Qwen 3B (10 epochs), cấu hình test 1.
+- Đóng vai trò mốc thực nghiệm đầu của nhánh Qwen 10 epochs.
 
-### 6) `qwen_3b_10epochs_grammar_FIX_B3.ipynb`
-**Role:** adds band-aware reweighting to reduce score-distribution bias.
+#### `score_training/qwen_3b_10epochs_test_2.ipynb`
+- Biến thể cấu hình test 2.
+- So sánh thay đổi về loss/feature/training setup so với test 1.
 
-**Method / approach:**
-- Still uses **Qwen + grammar features + multi-task regression**.
-- Adds `build_band_value_weights(...)` to assign **weights to score bands**.
-- Builds per-sample `sample_weights` based on criterion band values.
-- Uses **sample reweighting** to make underrepresented bands matter more during training.
+#### `score_training/qwen_3b_10epochs_test_3.ipynb`
+- Biến thể cấu hình test 3.
+- Thường dùng để xác nhận độ ổn định khi thay đổi một phần kiến trúc hoặc hyperparameters.
 
-**Core idea:**
-- If the training set is skewed toward common score ranges, the model may overfit to those ranges; reweighting helps counter that imbalance.
+#### `score_training/qwen_3b_10epochs_test_4.ipynb`
+- Biến thể cấu hình test 4.
+- Dùng cho ablation/so sánh incremental improvement.
 
-### 7) `qwen_3b_10epochs_grammar_FIX_B4.ipynb`
-**Role:** switches from continuous regression to **ordinal regression**.
+#### `score_training/qwen_3b_10epochs_test_5.ipynb`
+- Biến thể cấu hình test 5.
+- Tập trung tinh chỉnh để cân bằng chất lượng dự đoán và độ ổn định train.
 
-**Method / approach:**
-- Treats score prediction as ordered thresholds rather than free-form continuous outputs.
-- Uses a model variant such as `QwenForIELTSMultiTaskOrdinal`.
-- Optimizes a **BCE / threshold-based ordinal loss**.
-- Incorporates criterion-specific handcrafted features for:
-  - `tr_features`
-  - `cc_features`
-  - `lr_features`
-  - `gra_features`
+#### `score_training/qwen_3b_10epochs_test_7.ipynb`
+- Biến thể cấu hình test 7.
+- Mở rộng thêm hướng feature/prompting theo tiêu chí (tuỳ phiên bản notebook).
 
-**Core idea:**
-- IELTS band scores are inherently ordered labels, so ordinal regression can be more structurally appropriate than plain regression.
+#### `score_training/qwen_3b_10epochs_test_8.ipynb`
+- Biến thể cấu hình test 8.
+- Thường là một trong các bản tối ưu throughput và/hoặc chất lượng trong nhánh Qwen.
 
-### 8) `qwen_3b_10epochs_grammar_FIX_B5.ipynb`
-**Role:** an ordinal-regression follow-up with different training configuration.
+> Gợi ý: vì các file đặt tên `test_X`, bạn nên ghi log thực nghiệm (metric + config chính) ở đầu/cuối mỗi notebook để tiện truy vết kết quả.
 
-**Method / approach:**
-- Same broad family as B4: **ordinal regression + criterion-specific features**.
-- Uses a different batching setup (the notebook config sets `BATCH_SIZE = 2`) to test optimization stability and resource trade-offs.
-- Keeps the hybrid Qwen + engineered-feature design.
+---
 
-### 9) `qwen_3b_10epochs_grammar_FIX_B7.ipynb`
-**Role:** expands feature engineering and makes the textual prompt more examiner-like.
+### 2.4. `score_inference/` – Notebook suy luận
 
-**Method / approach:**
-- Builds a richer feature set for all four criteria:
-  - **TR**: prompt adherence / topical coverage,
-  - **CC**: coherence and cohesion cues,
-  - **LR**: lexical richness,
-  - **GRA**: grammar complexity/correctness.
-- Rewrites `build_input_text(...)` in a more instruction-like examiner style.
-- Increases `MAX_LENGTH` to **2048** for longer essays.
-- Continues the **hybrid multi-task** direction with LLM embeddings plus handcrafted features.
+#### `score_inference/test_1_inference.ipynb`
+- Inference cho nhánh model tương ứng test 1.
+- Dùng để kiểm tra output prediction trên dữ liệu mới hoặc tập test.
 
-**Core idea:**
-- This notebook improves both the feature side and the prompting side, making the setup more aligned with instruction-aware essay scoring.
+#### `score_inference/test_2_inference.ipynb`
+- Inference cho biến thể test 2.
+- Dùng so sánh trực tiếp chất lượng đầu ra giữa các checkpoint.
 
-### 10) `qwen_3b_10epochs_grammar_FIX_B8.ipynb`
-**Role:** a more throughput-oriented refinement of B7.
+#### `score_inference/test_7_inference.ipynb`
+- Inference cho biến thể test 7.
+- Thường dùng đánh giá các thay đổi mạnh về feature/prompting sau khi train.
 
-**Method / approach:**
-- Keeps the full criterion-specific feature set.
-- Uses an input prompt written explicitly from the perspective of an **IELTS Writing Task 2 examiner**.
-- Uses `MAX_LENGTH = 1536` and `BATCH_SIZE = 8`, suggesting a practical balance between context length and training speed.
-- Preserves the hybrid Qwen + engineered-feature training direction.
+---
 
-**Best use case:**
-- When you want a more practical high-throughput experiment while keeping the full handcrafted feature pipeline.
+## 3) Cách chạy đề xuất
 
-## 🧠 Quick taxonomy of `further_test/`
-
-- **Approach 1 – Text-only regression:**
-  - `qwen_3b_3epochs.ipynb`
-  - `qwen_3b_10epochs.ipynb`
-- **Approach 2 – Hybrid regression (Qwen + grammar features):**
-  - `qwen_3b_10epochs_grammar.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B1.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B2.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B3.ipynb`
-- **Approach 3 – Hybrid ordinal / criterion-specific features:**
-  - `qwen_3b_10epochs_grammar_FIX_B4.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B5.ipynb`
-- **Approach 4 – Full feature engineering + instruction-aware setup:**
-  - `qwen_3b_10epochs_grammar_FIX_B7.ipynb`
-  - `qwen_3b_10epochs_grammar_FIX_B8.ipynb`
-
-## ⚡ Quick start
-
-### 1) Environment setup
-
-Recommended: Python **3.10+** with Jupyter Notebook/Lab.
+### Bước 1: Chuẩn bị môi trường
 
 ```bash
 python -m venv .venv
@@ -425,28 +144,32 @@ pip install -U pip
 pip install jupyter pandas numpy scikit-learn matplotlib seaborn transformers datasets torch peft accelerate
 ```
 
-### 2) Run notebooks
+### Bước 2: Mở notebook
 
 ```bash
 jupyter notebook
 ```
 
-Recommended order:
+### Bước 3: Thứ tự chạy khuyến nghị
+
 1. `eda.ipynb`
 2. `feature engineering.ipynb`
-3. notebooks in `baseline/`
-4. notebooks in `further_test/`
-5. notebooks in `inference/`
+3. Notebook trong `baseline/`
+4. Notebook trong `score_training/`
+5. Notebook trong `score_inference/`
 
-### 3) Data
+---
 
-The repository already includes train/validation/test CSV files. If you replace the dataset:
-- keep the same column schema used by the notebooks,
-- update paths in the data-loading cells,
-- verify label columns and handcrafted feature columns before running notebooks in `further_test/`.
+## 4) Gợi ý quản lý thực nghiệm
 
-## 🧷 Notes
+- Chuẩn hóa cách đặt tên run/checkpoint (ví dụ: `model_dataset_loss_seed_date`).
+- Ghi lại metric quan trọng sau mỗi thí nghiệm (MAE/RMSE/QWK nếu có).
+- Tách rõ dữ liệu train/val/test và cố định random seed để tái lập.
+- Nếu thêm notebook mới, cập nhật lại mục “Cấu trúc thư mục” ngay để người khác theo dõi dễ hơn.
 
-- ⚠️ This is a notebook-heavy repository, so results may depend on the execution environment.
-- ⚠️ Several notebooks were written with Google Colab assumptions (`/content/...`, `drive.mount(...)`), so local execution may require path edits.
-- 📦 Adding a `requirements.txt` or `environment.yml` would improve reproducibility.
+---
+
+## 5) Ghi chú
+
+- Dự án hiện thiên về notebook research workflow, chưa đóng gói thành module Python hoàn chỉnh.
+- Khi chuyển sang production/integration, nên tách code chung (data processing, model class, metrics, inference utils) thành thư mục `src/` để dễ test và tái sử dụng.
