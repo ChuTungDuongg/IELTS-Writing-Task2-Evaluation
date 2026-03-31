@@ -1,9 +1,9 @@
 # ✍️ IELTS-Writing-Evals
 
-Repository này phục vụ nghiên cứu bài toán **chấm điểm IELTS Writing Task 2** bằng nhiều hướng tiếp cận:
+Repository này phục vụ nghiên cứu bài toán **chấm điểm IELTS Writing Task 2** theo nhiều hướng:
 - Baseline encoder models (RoBERTa/ModernBERT/DistilRoBERTa).
 - Fine-tune LLM (Qwen, Mistral) cho multi-output scoring.
-- Inference notebook để thử nghiệm checkpoint đã train.
+- Inference ở 2 mức: **score-only inference** và **full inference với retriever + generation**.
 
 ---
 
@@ -12,128 +12,120 @@ Repository này phục vụ nghiên cứu bài toán **chấm điểm IELTS Writ
 - Phân tích dữ liệu essay IELTS và phân phối điểm theo từng tiêu chí.
 - Xây dựng các pipeline huấn luyện để dự đoán điểm các tiêu chí Writing.
 - So sánh nhiều kiến trúc/mức tài nguyên khác nhau (baseline nhỏ → mô hình lớn).
-- Giữ toàn bộ workflow dạng notebook để dễ tái lập thí nghiệm.
+- Giữ toàn bộ workflow dưới dạng notebook để dễ tái lập và kiểm thử ý tưởng.
 
 ---
 
-## 2) Cấu trúc thư mục & giải thích chi tiết từng file
+## 2) Tóm tắt cấu trúc hệ thống
 
-> Bạn có thể xem repo theo luồng: **dữ liệu → khám phá/feature → training → inference**.
+> Luồng tổng quát: **Data → EDA/Feature Engineering → Training → Inference**.
 
-### 2.1. Thư mục gốc
+### 2.1 Data layer (root CSV)
+- `ielts_train_df.csv`: dữ liệu train.
+- `ielts_val_df.csv`: dữ liệu validation.
+- `ielts_test_df.csv`: dữ liệu test.
+
+### 2.2 Analysis & Feature layer
+- `eda.ipynb`: phân tích khám phá dữ liệu (phân phối điểm, độ dài bài viết, thiếu dữ liệu...).
+- `feature engineering.ipynb`: tạo/đánh giá feature thủ công bổ sung cho mô hình.
+
+### 2.3 Model training layer
+- `baseline/`: các encoder baseline để lấy mốc (DistilRoBERTa, RoBERTa Base/Large, ModernBERT Large).
+- `score_training/`: các notebook fine-tune LLM (Qwen 3B, Mistral 7B) cho bài toán scoring.
+
+### 2.4 Inference layer
+- `score_inference/`: suy luận điểm từ checkpoint theo từng test cấu hình.
+- `full_inference/`: pipeline suy luận đầy đủ (retrieval + prompt/generation + scoring output), phù hợp khi cần mô phỏng pipeline gần thực tế hơn so với score-only.
+
+---
+
+## 3) Cấu trúc thư mục & vai trò từng file
+
+### 3.1 Thư mục gốc
 
 #### `README.md`
-- Tài liệu mô tả tổng quan dự án, cấu trúc thư mục, vai trò từng notebook.
+- Tài liệu mô tả tổng quan dự án, luồng hệ thống và vai trò từng notebook.
 
 #### `reference.pdf`
-- Tài liệu tham chiếu (đề bài/ghi chú/nguồn tham khảo nội bộ của dự án).
-- Dùng làm ngữ cảnh khi đọc/đối chiếu kết quả trong notebook.
+- Tài liệu tham chiếu phục vụ đối chiếu trong quá trình nghiên cứu.
 
 #### `eda.ipynb`
-- Notebook phân tích khám phá dữ liệu (EDA).
-- Thường bao gồm:
-  - Kiểm tra kích thước tập dữ liệu.
-  - Phân phối điểm theo tiêu chí.
-  - Kiểm tra thiếu dữ liệu / bất thường.
-  - Quan sát độ dài bài viết và các đặc tính bề mặt.
+- Notebook EDA: kiểm tra kích thước dữ liệu, phân phối band điểm, bất thường dữ liệu, thống kê văn bản.
 
 #### `feature engineering.ipynb`
-- Notebook xây dựng đặc trưng thủ công cho essay.
-- Mục đích:
-  - Trích xuất feature ngôn ngữ học bổ sung cho mô hình.
-  - So sánh hiệu quả giữa biểu diễn thuần transformer và hướng hybrid (embedding + handcrafted features).
+- Notebook xây dựng và thử nghiệm đặc trưng thủ công cho essay.
 
-#### `ielts_train_df.csv`
-- Tập huấn luyện chính.
-- Chứa essay/prompt/nhãn điểm dùng để train model.
-
-#### `ielts_val_df.csv`
-- Tập validation.
-- Dùng chọn checkpoint, tinh chỉnh siêu tham số, theo dõi overfitting.
-
-#### `ielts_test_df.csv`
-- Tập test.
-- Dùng đánh giá cuối cùng và kiểm tra khả năng tổng quát hóa.
+#### `ielts_train_df.csv` / `ielts_val_df.csv` / `ielts_test_df.csv`
+- Ba tập dữ liệu train/val/test dùng xuyên suốt các notebook.
 
 ---
 
-### 2.2. `baseline/` – Các mô hình baseline
+### 3.2 `baseline/` – Baseline encoder
 
 #### `baseline/distil_roberta_base_score.ipynb`
-- Baseline nhẹ, huấn luyện nhanh.
-- Phù hợp lấy mốc ban đầu, kiểm tra pipeline end-to-end trước khi chạy mô hình lớn.
+- Baseline nhẹ để kiểm tra pipeline nhanh và lấy mốc ban đầu.
 
 #### `baseline/roberta_base_score.ipynb`
-- Baseline chuẩn với RoBERTa base.
-- Cân bằng tốt giữa chất lượng và chi phí huấn luyện.
+- Baseline cân bằng giữa chất lượng và chi phí.
 
 #### `baseline/roberta_large_score.ipynb`
-- Phiên bản RoBERTa large.
-- Dùng để kiểm tra liệu tăng kích thước backbone có cải thiện điểm đáng kể hay không.
+- Baseline backbone lớn để đo lợi ích khi scale model.
 
 #### `baseline/modern_bert_large_score.ipynb`
-- Baseline với ModernBERT large.
-- Mục tiêu so sánh kiến trúc encoder mới hơn với họ RoBERTa truyền thống.
+- So sánh ModernBERT Large với họ RoBERTa.
 
 ---
 
-### 2.3. `score_training/` – Thí nghiệm fine-tune LLM
+### 3.3 `score_training/` – Fine-tune LLM
 
-Nhóm notebook này tập trung vào train các mô hình lớn (Qwen/Mistral), chủ yếu theo hướng multi-criterion scoring.
-
-#### `score_training/Mistral_7B_3epochs_ordinal_regress_1.ipynb`
+#### `score_training/Mistral_7B_ordinal_regress_1.ipynb`
 - Thử nghiệm Mistral 7B theo hướng ordinal regression.
-- Nhắm tới đặc tính thứ bậc của band điểm IELTS.
 
-#### `score_training/qwen_3b_10epochs_test_1.ipynb`
-- Thử nghiệm Qwen 3B (10 epochs), cấu hình test 1.
-- Đóng vai trò mốc thực nghiệm đầu của nhánh Qwen 10 epochs.
-
-#### `score_training/qwen_3b_10epochs_test_2.ipynb`
-- Biến thể cấu hình test 2.
-- So sánh thay đổi về loss/feature/training setup so với test 1.
-
-#### `score_training/qwen_3b_10epochs_test_3.ipynb`
-- Biến thể cấu hình test 3.
-- Thường dùng để xác nhận độ ổn định khi thay đổi một phần kiến trúc hoặc hyperparameters.
-
-#### `score_training/qwen_3b_10epochs_test_4.ipynb`
-- Biến thể cấu hình test 4.
-- Dùng cho ablation/so sánh incremental improvement.
-
-#### `score_training/qwen_3b_10epochs_test_5.ipynb`
-- Biến thể cấu hình test 5.
-- Tập trung tinh chỉnh để cân bằng chất lượng dự đoán và độ ổn định train.
-
-#### `score_training/qwen_3b_10epochs_test_7.ipynb`
-- Biến thể cấu hình test 7.
-- Mở rộng thêm hướng feature/prompting theo tiêu chí (tuỳ phiên bản notebook).
-
-#### `score_training/qwen_3b_10epochs_test_8.ipynb`
-- Biến thể cấu hình test 8.
-- Thường là một trong các bản tối ưu throughput và/hoặc chất lượng trong nhánh Qwen.
-
-> Gợi ý: vì các file đặt tên `test_X`, bạn nên ghi log thực nghiệm (metric + config chính) ở đầu/cuối mỗi notebook để tiện truy vết kết quả.
+#### `score_training/qwen_3b_test_1.ipynb`
+#### `score_training/qwen_3b_test_2.ipynb`
+#### `score_training/qwen_3b_test_3.ipynb`
+#### `score_training/qwen_3b_test_4.ipynb`
+#### `score_training/qwen_3b_test_5.ipynb`
+#### `score_training/qwen_3b_test_7.ipynb`
+#### `score_training/qwen_3b_test_8.ipynb`
+- Các biến thể cấu hình train Qwen 3B cho mục tiêu scoring theo tiêu chí.
+- Mỗi file đại diện một thực nghiệm (khác nhau về config/loss/prompting/feature setup).
 
 ---
 
-### 2.4. `score_inference/` – Notebook suy luận
+### 3.4 `score_inference/` – Score-only inference
 
 #### `score_inference/test_1_inference.ipynb`
-- Inference cho nhánh model tương ứng test 1.
-- Dùng để kiểm tra output prediction trên dữ liệu mới hoặc tập test.
-
 #### `score_inference/test_2_inference.ipynb`
-- Inference cho biến thể test 2.
-- Dùng so sánh trực tiếp chất lượng đầu ra giữa các checkpoint.
-
 #### `score_inference/test_7_inference.ipynb`
-- Inference cho biến thể test 7.
-- Thường dùng đánh giá các thay đổi mạnh về feature/prompting sau khi train.
+- Notebook chạy suy luận từ checkpoint tương ứng từng nhánh test.
+- Mục tiêu chính: so sánh output dự đoán điểm giữa các cấu hình model đã train.
 
 ---
 
-## 3) Cách chạy đề xuất
+### 3.5 `full_inference/` – Full inference (phần quan trọng)
+
+Thư mục này chứa các notebook triển khai **pipeline suy luận đầy đủ**, không chỉ dừng ở gọi model chấm điểm, mà còn gắn thêm thành phần retrieval/context để hỗ trợ đầu ra.
+
+#### `full_inference/test_7_inference_retriever_full.ipynb`
+- Phiên bản full pipeline cho nhánh test 7.
+- Thường dùng làm baseline chính trong nhóm full inference có retriever.
+
+#### `full_inference/test_7_inference_retriever_full_zero_1.ipynb`
+- Biến thể “zero_1” của full pipeline.
+- Dùng cho ablation/so sánh ảnh hưởng khi thay đổi cấu hình retrieval hoặc prompt ở chế độ zero-shot/near-zero.
+
+#### `full_inference/test_7_inference_retriever_full_zero_mistral.ipynb`
+- Biến thể full inference chuyển sang backbone/thiết lập Mistral.
+- Phù hợp để so sánh cùng một pipeline retrieval nhưng khác model family.
+
+**Khi nào dùng `full_inference/` thay vì `score_inference/`?**
+- Dùng `score_inference/` khi chỉ cần kiểm tra chất lượng đầu ra chấm điểm từ checkpoint.
+- Dùng `full_inference/` khi cần đánh giá pipeline gần thực tế triển khai hơn (có thêm retrieval/context orchestration).
+
+---
+
+## 4) Cách chạy đề xuất
 
 ### Bước 1: Chuẩn bị môi trường
 
@@ -157,19 +149,24 @@ jupyter notebook
 3. Notebook trong `baseline/`
 4. Notebook trong `score_training/`
 5. Notebook trong `score_inference/`
+6. Notebook trong `full_inference/` (khi cần test pipeline đầy đủ)
 
 ---
 
-## 4) Gợi ý quản lý thực nghiệm
+## 5) Gợi ý quản lý thực nghiệm
 
 - Chuẩn hóa cách đặt tên run/checkpoint (ví dụ: `model_dataset_loss_seed_date`).
 - Ghi lại metric quan trọng sau mỗi thí nghiệm (MAE/RMSE/QWK nếu có).
-- Tách rõ dữ liệu train/val/test và cố định random seed để tái lập.
-- Nếu thêm notebook mới, cập nhật lại mục “Cấu trúc thư mục” ngay để người khác theo dõi dễ hơn.
+- Tách rõ train/val/test và cố định random seed để dễ tái lập.
+- Với các notebook trong `full_inference/`, nên ghi rõ:
+  - Retriever đang dùng gì.
+  - Dữ liệu/context nguồn lấy từ đâu.
+  - Prompt template phiên bản nào.
+  - Mapping từ output text → score cuối cùng.
 
 ---
 
-## 5) Ghi chú
+## 6) Ghi chú
 
-- Dự án hiện thiên về notebook research workflow, chưa đóng gói thành module Python hoàn chỉnh.
-- Khi chuyển sang production/integration, nên tách code chung (data processing, model class, metrics, inference utils) thành thư mục `src/` để dễ test và tái sử dụng.
+- Dự án đang ở dạng notebook research workflow, chưa đóng gói thành module Python hoàn chỉnh.
+- Khi chuyển sang production, nên tách phần dùng chung (data processing, metrics, inference utils, retriever utils) thành `src/`.
